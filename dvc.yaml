@@ -1,0 +1,21 @@
+# Pipeline reproducible con DVC: "dvc repro" ejecuta solo las etapas que cambiaron
+stages:
+  train:
+    cmd: python train.py
+    deps: [train.py, model.py, data_utils.py]
+    outs: [models/model.pt, models/reference_stats.json]
+    metrics: [models/metrics.json: {cache: false}]
+  export:
+    cmd: python export_onnx.py
+    deps: [export_onnx.py, models/model.pt]
+    outs: [models/model_fp32.onnx]
+    metrics: [results/export_validation.json: {cache: false}]
+  quantize:
+    cmd: python quantize.py
+    deps: [quantize.py, models/model_fp32.onnx]
+    outs: [models/model_int8.onnx]
+    metrics: [results/quantization.json: {cache: false}]
+  benchmark:
+    cmd: python benchmark.py
+    deps: [benchmark.py, models/model.pt, models/model_fp32.onnx, models/model_int8.onnx]
+    metrics: [results/benchmark.json: {cache: false}]

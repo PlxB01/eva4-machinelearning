@@ -1,0 +1,7 @@
+{
+  "test_accuracy": 0.8922,
+  "train_loss": 0.30038889705340066,
+  "epochs": 3,
+  "params": 206922,
+  "train_seconds": 59.1
+}

@@ -1,0 +1,8 @@
+{
+  "accuracy_fp32": 0.8922,
+  "accuracy_int8": 0.8909,
+  "accuracy_drop": 0.0013,
+  "size_fp32_kb": 810.3,
+  "size_int8_kb": 214.3,
+  "size_reduction_pct": 73.6
+}

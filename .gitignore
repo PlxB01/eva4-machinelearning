@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+data/
+mlruns/
+.pytest_cache/
+# Los modelos se versionan con DVC (no con git)
+models/*.pt
+models/*.onnx
+lote/
+mlflow.db
+prueba.txt

@@ -1,0 +1,77 @@
+name: CI/CD modelo Deep Learning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  entrenar-validar-probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias (PyTorch CPU)
+        run: |
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Entrenar modelo (1 época, rápido)
+        run: python train.py
+        env:
+          EPOCHS: "1"
+
+      - name: Exportar a ONNX y validar artefacto
+        run: python export_onnx.py
+
+      - name: Cuantizar FP32 -> INT8
+        run: python quantize.py
+
+      - name: Benchmark de latencia y recursos
+        run: python benchmark.py
+
+      - name: Tests automáticos (métricas, latencia, drift, API)
+        run: pytest -v
+        env:
+          MIN_ACCURACY: "0.80"
+          MAX_LATENCY_MS: "50"
+
+      - name: Publicar resultados como artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: modelo-y-resultados
+          path: |
+            models/
+            results/
+
+      - name: Construir imagen Docker
+        run: docker build -t fashion-api:${{ github.sha }} .
+
+      - name: Prueba de humo del contenedor
+        run: |
+          docker run -d -p 8000:8000 --name api fashion-api:${{ github.sha }}
+          for i in $(seq 1 20); do curl -fs http://localhost:8000/health && break; sleep 1; done
+          curl -f http://localhost:8000/health
+          docker logs api
+
+      - name: Publicar imagen en GitHub Container Registry (solo rama main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag fashion-api:${{ github.sha }} $IMAGE:${{ github.sha }}
+          docker tag fashion-api:${{ github.sha }} $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+    permissions:
+      contents: read
+      packages: write

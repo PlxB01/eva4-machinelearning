@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+venv
+data
+mlruns
+results
+tests
+__pycache__
+*.pyc
+models/*.pt
+models/model_fp32*.onnx
